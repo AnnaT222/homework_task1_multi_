@@ -1,4 +1,6 @@
 import { spawn } from 'child_process';
+import { writeFile } from 'fs/promises';
+import path from 'path';
 import fs from 'fs';
 
 const fsPromises = fs.promises
@@ -6,7 +8,7 @@ const fsPromises = fs.promises
 const statistics = {
     start: getTime(),
     duration: null,
-    success: false,
+    success: true,
     commandSuccess: true,
     error: null
 }
@@ -22,37 +24,44 @@ async function getStatistics(command, args, timeout) {
     const childProcess = spawn(command, args);
     childProcess.stdout.on('data', (data) => {
         console.log(`stdout: ${data}`);
+        delete statistics.commandSuccess
     });
 
-
-    childProcess.on('error', (data) => {
-        console.log(`error: ${data}`);
-    });
 
 
     childProcess.on('error', (error) => {
         statistics.error = error.message
         statistics.commandSuccess = false
+        statistics.success = false
         console.error('Child: Command execution failed');
     });
 
-    childProcess.on('close', (code) => {
-        console.log(`child process exited with code ${code}`);
-        if (statistics.commandSuccess) {
-            getDuration()
-            statistics.success = true
-            delete statistics.commandSuccess
-        } else {
-            getDuration()
-        }
-        fs.createWriteStream('./logs/' + `${fileName}`).write(JSON.stringify(statistics));
-    });
+
+    childProcess.on('close', () => {
+        console.log("Child process closed");
+        getDuration()
+
+        return new Promise((resolve, reject) => {
+
+            writeFile(path.join('./logs', fileName), JSON.stringify(statistics))
+
+                .then(() => {
+                    resolve("Everything was ok")
+                })
+                .catch(err => {
+                    reject(err)
+                })
+        })
+    })
 }
+
 function getTime() {
     const start = Date.now()
     return start
 }
+
 function getDuration() {
     statistics.duration = getTime() - statistics.start
 }
+
 await getStatistics('ls', ["-lh"])
