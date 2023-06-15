@@ -55,4 +55,4 @@ function getTime() {
 function getDuration() {
     statistics.duration = getTime() - statistics.start
 }
-await getStatistics('ls4', ["-lh"])
+await getStatistics('ls', ["-lh"])
